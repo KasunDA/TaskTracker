@@ -12,6 +12,8 @@ This was developed on a 64-bit Windows 10 PC with Python 3.5.2
 
 ## User Guide
 All that is needed to run is the TaskTracker.py and send_csv.py files. 
+'
+Start TaskTracker.py, select your time interval, hit start to start the reminders and stop to stop them. On Mondays, input your email, the "to" email, and expect an email of last week's reports.
 
 ### TaskTracker.py
 This is the bulk of the program. Using Tkinter for Python 3, it presents the user with a window to select the time interval in which they want to be asked to submit an entry (1, 5, 10, 15, 30, 45, 60, or 90 minutes). 
