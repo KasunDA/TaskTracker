@@ -4,7 +4,9 @@
 #
 # Built on Python 3.5.2 32-Bit
 #
-#
+# todo: add view by week option
+# todo: add export to by week option
+
 import csv
 import os
 import time
@@ -19,9 +21,13 @@ root.wm_attributes("-topmost", 1)
 
 class UserForm:
     cur = None
+    thisweek = None
+    conn = None
 
     def __init__(self, master):
         global cur
+        global thisweek
+        global conn
 
         self.master = master
 
@@ -91,12 +97,6 @@ class UserForm:
             self.label_last_update.configure(
                 text="Time of last update: " + self.last_update)
 
-            if self.first_time:
-                if not os.path.isfile(self.tasks_csv_path):
-                    with open(self.tasks_csv_path, 'a', newline='') as file:
-                        output = csv.writer(file, delimiter=',')
-                        output.writerow(["Time"] + ["Entry"] + ["For Whom?"])
-
             if name == "Start":
                 self.shouldRun = True
                 self.name = "Start"
@@ -104,24 +104,27 @@ class UserForm:
                 self.btn_stop.configure(state="normal")
                 self.first_time = False
 
-                with open(self.tasks_csv_path, 'a', newline='') as file:
-                    output = csv.writer(file, delimiter=',')
-                    output.writerow([time.strftime("%a %I:%M %p")] + ["Start"])
+                tempTime = time.strftime("%a %I:%M %p")
+                cur.execute("""INSERT INTO WeeklyReportRaw (week, datetime, tasks) VALUES (?, ?, 'Start')""",
+                            (thisweek, tempTime))
+                conn.commit()
 
             if self.shouldRun:
                 self.userTask = popupWindow(self.master, interval, shouldRun)
                 master.wait_window(self.userTask.top)
 
-                with open(self.tasks_csv_path, 'a', newline='') as csvfile:
-                    output = csv.writer(csvfile, delimiter=',')
-                    whatdoing = entryValue(self)
-                    output.writerow(
-                        [time.strftime("%a %I:%M %p")] + [whatdoing[0]] + [whatdoing[1]])
+                # add entry to database
+                whatdoing = entryValue(self)
+                tempTime = time.strftime("%a %I:%M %p")
+                cur.execute("""INSERT INTO WeeklyReportRaw (week, datetime, tasks, forwho) VALUES (?, ?, ?, ?)""",
+                            (thisweek, tempTime, whatdoing[0], whatdoing[1]))
+                conn.commit()
 
                 self.master.after(interval, lambda: entryForm(
                     shouldRun, interval, ""))
 
         self.old_value = ""
+        self.old_forwho = ""
 
         # get the user's entered value
         # if nothing was entered, use the last value
@@ -147,9 +150,10 @@ class UserForm:
             self.shouldRun = False
             self.name = "Stop"
 
-            with open(self.tasks_folder + "/" + self.datetime + '.csv', 'a', newline='') as csvfile:
-                output = csv.writer(csvfile, delimiter=',')
-                output.writerow([time.strftime("%a %I:%M %p")] + ["Stop"])
+            tempTime = time.strftime("%a %I:%M %p")
+            cur.execute("""INSERT INTO WeeklyReportRaw (week, datetime, tasks) VALUES (?, ?, 'Stop')""",
+                        (thisweek, tempTime))
+            conn.commit()
 
         self.shouldRun = True
         self.name = "Start"
@@ -172,15 +176,21 @@ class UserForm:
         self.btn_stop.grid(column=0, row=3, sticky=W + E, columnspan=2)
         self.btn_stop.configure(state="disabled")
 
-    def loadDataBase(self, thisweek, lastweek):
+    def loadDataBase(self, lthisweek, lastweek):
         global cur
+        global conn
+        global thisweek
+
+        thisweek = lthisweek
         if not os.path.isfile("data.sqlite3"):
             conn = sqlite3.connect('data.sqlite3')
             cur = conn.cursor()
 
             cur.execute('DROP TABLE IF EXISTS WeeklyReportRaw')
-            cur.execute('CREATE TABLE WeeklyReportRaw (week TEXT, datetime TEXT, tasks TEXT)')
+            cur.execute('CREATE TABLE WeeklyReportRaw (week TEXT, datetime TEXT, tasks TEXT, forwho TEXT)')
+            print("database doesn't exist")
         elif os.path.isfile("data.sqlite3"):
+            print("database exists")
             conn = sqlite3.connect('data.sqlite3')
             cur = conn.cursor()
 
