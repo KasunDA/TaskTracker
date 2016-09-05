@@ -8,6 +8,7 @@
 import csv
 import os
 import time
+import sqlite3
 
 from tkinter import *
 
@@ -17,8 +18,11 @@ root.wm_attributes("-topmost", 1)
 
 
 class UserForm:
+    cur = None
 
     def __init__(self, master):
+        global cur
+
         self.master = master
 
         self.mainlabelframe = LabelFrame(self.master, text="Directions")
@@ -168,6 +172,17 @@ class UserForm:
         self.btn_stop.grid(column=0, row=3, sticky=W + E, columnspan=2)
         self.btn_stop.configure(state="disabled")
 
+    def loadDataBase(self, thisweek, lastweek):
+        global cur
+        if not os.path.isfile("data.sqlite3"):
+            conn = sqlite3.connect('data.sqlite3')
+            cur = conn.cursor()
+
+            cur.execute('DROP TABLE IF EXISTS WeeklyReportRaw')
+            cur.execute('CREATE TABLE WeeklyReportRaw (week TEXT, datetime TEXT, tasks TEXT)')
+        elif os.path.isfile("data.sqlite3"):
+            conn = sqlite3.connect('data.sqlite3')
+            cur = conn.cursor()
 
 # popup window that asks for user input
 # appears centered on screen and destroys itself if user doesn't
@@ -239,19 +254,31 @@ class popupWindow(Tk):
 
 if __name__ == '__main__':
     # todo: add command line so can pass in file name to report to send_csv.py
+
+    # this year
+    year = time.strftime("%Y")
+    # last week
+    last_week = int(str(time.strftime("%U"))) - 1  # previous week
+    last_week_full_datetime = time.strptime(
+        '{} {} 1'.format(year, last_week), '%Y %W %w')
+    last_week_datetime_title = str(
+        year + "_WeekOf-" + str(last_week_full_datetime.tm_mon) + "-" + str(last_week_full_datetime.tm_mday))
+
+    # this week
+    this_week = int(str(time.strftime("%U")))  # this week
+    this_week_full_datetime = time.strptime(
+        '{} {} 1'.format(year, this_week), '%Y %W %w')
+    this_week_datetime_title = str(
+        year + "_WeekOf-" + str(this_week_full_datetime.tm_mon) + "-" + str(this_week_full_datetime.tm_mday))
+
     if time.strftime("%a") == "Mon":
-        week = int(str(time.strftime("%U"))) - 1
-        year = time.strftime("%Y")
-
-        full_datetime = time.strptime(
-            '{} {} 1'.format(year, week), '%Y %W %w')
-
-        datetime = str(
-            year + "_WeekOf-" + str(full_datetime.tm_mon) + "-" + str(full_datetime.tm_mday))
-
-        if os.path.isfile("Tasks_csv\\" + datetime + '.csv'):
+        if os.path.isfile("Tasks_csv\\" + last_week_datetime_title + '.csv'):
             # calls send csv to send out if its monday
             os.system('Python send_csv.py')
 
     app = UserForm(root)
+
+    # todo: replace csv structure with SQL database
+    app.loadDataBase(this_week_datetime_title, last_week_datetime_title)
+
     root.mainloop()
