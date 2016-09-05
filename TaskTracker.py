@@ -14,6 +14,8 @@ import sqlite3
 
 from tkinter import *
 
+import subprocess
+
 root = Tk()
 root.wm_title("Task List")
 root.wm_attributes("-topmost", 1)
@@ -284,7 +286,8 @@ if __name__ == '__main__':
     if time.strftime("%a") == "Mon":
         if os.path.isfile("Tasks_csv\\" + last_week_datetime_title + '.csv'):
             # calls send csv to send out if its monday
-            os.system('Python send_csv.py')
+            subprocess.call('Python send_csv.py ' + last_week_datetime_title + ' ' + this_week_datetime_title,
+                            shell=False)
 
     app = UserForm(root)
 

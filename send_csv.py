@@ -16,6 +16,7 @@ from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 import time
 import os
+import sys
 from tkinter import *
 
 root = Tk()
@@ -67,14 +68,15 @@ class requestEmailPass():
         self.fromaddr = self.fromaddr_entry.get()
         self.toaddr = self.toaddr_entry.get()
         self.pw = self.pw_entry.get()
-
-        self.report = SendReport(self.fromaddr, self.toaddr, self.pw)
+        print(len(sys.argv))
+        self.report = SendReport(self.fromaddr, self.toaddr, self.pw, sys.argv[1], sys.argv[2])
         self.master.destroy()
 
 
 class SendReport(object):
-
-    def __init__(self, fromaddr, toaddr, pw):
+    def __init__(self, fromaddr, toaddr, pw, lastweek, thisweek):
+        print("the last week was " + lastweek)
+        print("this week is " + thisweek)
         try:
 
             self.fromaddr = fromaddr
@@ -102,7 +104,7 @@ class SendReport(object):
 
             self.msg.attach(MIMEText(self.body, 'plain'))
 
-            self.filename = self.datetime + ".csv"
+            self.filename = lastweek + ".csv"
             self.attachment = open("Tasks_csv\\" + self.filename, "rb")
 
             self.part = MIMEBase('application', 'octet-stream')
