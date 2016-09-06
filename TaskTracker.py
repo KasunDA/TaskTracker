@@ -284,10 +284,7 @@ if __name__ == '__main__':
         year + "_WeekOf-" + str(this_week_full_datetime.tm_mon) + "-" + str(this_week_full_datetime.tm_mday))
 
     if time.strftime("%a") == "Mon":
-        if os.path.isfile("Tasks_csv\\" + last_week_datetime_title + '.csv'):
-            # calls send csv to send out if its monday
-            subprocess.call('Python send_csv.py ' + last_week_datetime_title + ' ' + this_week_datetime_title,
-                            shell=False)
+        subprocess.call('Python send_csv.py ' + last_week_datetime_title + ' ' + this_week_datetime_title, shell=False)
 
     app = UserForm(root)
 
