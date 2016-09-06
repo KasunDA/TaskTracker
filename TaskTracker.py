@@ -4,12 +4,17 @@
 #
 # Built on Python 3.5.2 32-Bit
 #
-#
+# todo: add view by week option
+# todo: add export to by week option
+
 import csv
 import os
 import time
+import sqlite3
 
 from tkinter import *
+
+import subprocess
 
 root = Tk()
 root.wm_title("Task List")
@@ -17,8 +22,15 @@ root.wm_attributes("-topmost", 1)
 
 
 class UserForm:
+    cur = None
+    thisweek = None
+    conn = None
 
     def __init__(self, master):
+        global cur
+        global thisweek
+        global conn
+
         self.master = master
 
         self.mainlabelframe = LabelFrame(self.master, text="Directions")
@@ -87,12 +99,6 @@ class UserForm:
             self.label_last_update.configure(
                 text="Time of last update: " + self.last_update)
 
-            if self.first_time:
-                if not os.path.isfile(self.tasks_csv_path):
-                    with open(self.tasks_csv_path, 'a', newline='') as file:
-                        output = csv.writer(file, delimiter=',')
-                        output.writerow(["Time"] + ["Entry"] + ["For Whom?"])
-
             if name == "Start":
                 self.shouldRun = True
                 self.name = "Start"
@@ -100,24 +106,27 @@ class UserForm:
                 self.btn_stop.configure(state="normal")
                 self.first_time = False
 
-                with open(self.tasks_csv_path, 'a', newline='') as file:
-                    output = csv.writer(file, delimiter=',')
-                    output.writerow([time.strftime("%a %I:%M %p")] + ["Start"])
+                tempTime = time.strftime("%a %I:%M %p")
+                cur.execute("""INSERT INTO WeeklyReportRaw (week, datetime, tasks) VALUES (?, ?, 'Start')""",
+                            (thisweek, tempTime))
+                conn.commit()
 
             if self.shouldRun:
                 self.userTask = popupWindow(self.master, interval, shouldRun)
                 master.wait_window(self.userTask.top)
 
-                with open(self.tasks_csv_path, 'a', newline='') as csvfile:
-                    output = csv.writer(csvfile, delimiter=',')
-                    whatdoing = entryValue(self)
-                    output.writerow(
-                        [time.strftime("%a %I:%M %p")] + [whatdoing[0]] + [whatdoing[1]])
+                # add entry to database
+                whatdoing = entryValue(self)
+                tempTime = time.strftime("%a %I:%M %p")
+                cur.execute("""INSERT INTO WeeklyReportRaw (week, datetime, tasks, forwho) VALUES (?, ?, ?, ?)""",
+                            (thisweek, tempTime, whatdoing[0], whatdoing[1]))
+                conn.commit()
 
                 self.master.after(interval, lambda: entryForm(
                     shouldRun, interval, ""))
 
         self.old_value = ""
+        self.old_forwho = ""
 
         # get the user's entered value
         # if nothing was entered, use the last value
@@ -143,9 +152,10 @@ class UserForm:
             self.shouldRun = False
             self.name = "Stop"
 
-            with open(self.tasks_folder + "/" + self.datetime + '.csv', 'a', newline='') as csvfile:
-                output = csv.writer(csvfile, delimiter=',')
-                output.writerow([time.strftime("%a %I:%M %p")] + ["Stop"])
+            tempTime = time.strftime("%a %I:%M %p")
+            cur.execute("""INSERT INTO WeeklyReportRaw (week, datetime, tasks) VALUES (?, ?, 'Stop')""",
+                        (thisweek, tempTime))
+            conn.commit()
 
         self.shouldRun = True
         self.name = "Start"
@@ -168,6 +178,23 @@ class UserForm:
         self.btn_stop.grid(column=0, row=3, sticky=W + E, columnspan=2)
         self.btn_stop.configure(state="disabled")
 
+    def loadDataBase(self, lthisweek, lastweek):
+        global cur
+        global conn
+        global thisweek
+
+        thisweek = lthisweek
+        if not os.path.isfile("data.sqlite3"):
+            conn = sqlite3.connect('data.sqlite3')
+            cur = conn.cursor()
+
+            cur.execute('DROP TABLE IF EXISTS WeeklyReportRaw')
+            cur.execute('CREATE TABLE WeeklyReportRaw (week TEXT, datetime TEXT, tasks TEXT, forwho TEXT)')
+            print("database doesn't exist")
+        elif os.path.isfile("data.sqlite3"):
+            print("database exists")
+            conn = sqlite3.connect('data.sqlite3')
+            cur = conn.cursor()
 
 # popup window that asks for user input
 # appears centered on screen and destroys itself if user doesn't
@@ -239,19 +266,29 @@ class popupWindow(Tk):
 
 if __name__ == '__main__':
     # todo: add command line so can pass in file name to report to send_csv.py
+
+    # this year
+    year = time.strftime("%Y")
+    # last week
+    last_week = int(str(time.strftime("%U"))) - 1  # previous week
+    last_week_full_datetime = time.strptime(
+        '{} {} 1'.format(year, last_week), '%Y %W %w')
+    last_week_datetime_title = str(
+        year + "_WeekOf-" + str(last_week_full_datetime.tm_mon) + "-" + str(last_week_full_datetime.tm_mday))
+
+    # this week
+    this_week = int(str(time.strftime("%U")))  # this week
+    this_week_full_datetime = time.strptime(
+        '{} {} 1'.format(year, this_week), '%Y %W %w')
+    this_week_datetime_title = str(
+        year + "_WeekOf-" + str(this_week_full_datetime.tm_mon) + "-" + str(this_week_full_datetime.tm_mday))
+
     if time.strftime("%a") == "Mon":
-        week = int(str(time.strftime("%U"))) - 1
-        year = time.strftime("%Y")
-
-        full_datetime = time.strptime(
-            '{} {} 1'.format(year, week), '%Y %W %w')
-
-        datetime = str(
-            year + "_WeekOf-" + str(full_datetime.tm_mon) + "-" + str(full_datetime.tm_mday))
-
-        if os.path.isfile("Tasks_csv\\" + datetime + '.csv'):
-            # calls send csv to send out if its monday
-            os.system('Python send_csv.py')
+        subprocess.call('Python send_csv.py ' + last_week_datetime_title + ' ' + this_week_datetime_title, shell=False)
 
     app = UserForm(root)
+
+    # todo: replace csv structure with SQL database
+    app.loadDataBase(this_week_datetime_title, last_week_datetime_title)
+
     root.mainloop()
