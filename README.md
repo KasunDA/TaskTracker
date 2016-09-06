@@ -1,4 +1,4 @@
-# TaskList
+# TaskTracker
 Utility to track what you're doing at user specified intervals. At the startup on a Monday it emails out the last week's report to user specified email address from user's gmail.
 
 ## Background
@@ -36,6 +36,6 @@ It then moves the last week's report to a folder for already sent reports. If it
 A few things I'd like to implement to flesh this out:
 * Validate email addresses
 * Expand to more than just gmail addresses
-* Some way to filter or summarize the entries from the emailed report (word or phrase frequency count?)
+* ~~Some way to filter or summarize the entries from the emailed report (word or phrase frequency count?)~~ Ended up just managing data in a local SQLite database to filter by unique activities for the summary.
 * Have mutliple users and profiles
 * Host entries on a remote server instead of locally maybe
