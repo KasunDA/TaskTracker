@@ -25,6 +25,8 @@
 #
 # Friday:
 #
+# todo: add "sent" table to keep track of reports that were already sent to prevent dialogue from popping up on every start on a Monday
+#
 import smtplib
 import sqlite3
 from collections import OrderedDict

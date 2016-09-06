@@ -3,7 +3,7 @@ Utility to track what you're doing at user specified intervals. At the startup o
 
 ## Background
 One of my supervisors at work asked me to turn in some sort of log or sumary of my daily activity on a weekly basis. I wasn't sure the best way to go about this so I created this utility. Basically I knew I wanted to do the following:
-* Output to some sort of text file.
+* Output to some sort of text file or database.
 * Ability to start and stop tracking.
 * A utility that would be mildly intrusive and force me to be mindful about what I'm doing and for whom I'm doing it.
 * A reminder to compile these personal notes for my supervisor. 
@@ -18,12 +18,13 @@ Start TaskTracker.py, select your time interval, hit start to start the reminder
 ### TaskTracker.py
 This is the bulk of the program. Using Tkinter for Python 3, it presents the user with a window to select the time interval in which they want to be asked to submit an entry (1, 5, 10, 15, 30, 45, 60, or 90 minutes). 
 
-The "Start" starts the application and creates the output csv that is named by the week. For example: 2016_WeekOf-8-22.csv corresponds to the 34th week of the year and 8-22 is the Monday of that week. This goes into a folder created called Tasks_csv. 
+The "Start" starts the application and creates a record in the SQLite with the along with an identifier for that week. For example: 2016_WeekOf-8-22 corresponds to the 34th week of the year and 8-22 is the Monday of that week.
 
 The user enters what they are doing and for whom it is in the popup-dialogue. This popup closes itself after 5 minutes. If the entry is empty, it assumes the last task entered is the task still being worked on and adds the same task to the csv. This is because I personally step away from my computer with irregular frequency so if I didn't respond to it it is very likely I"m still working on the last thing I entered.
 
-"Stop" ends the tracking. Each Start/Stop is also timestampped in the file. 
+"Stop" ends the tracking. Each Start/Stop is also timestampped in the SQLite database.
 
+Each record added goes into the same SQLite database
 ### send_csv.py
 If it is a Monday when the TaskTracker.py program is started, the app asks for the following:
 * "From" gmail address of the user
