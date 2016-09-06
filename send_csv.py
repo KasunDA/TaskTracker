@@ -6,16 +6,32 @@
 #
 # Based on http://naelshiab.com/tutorial-send-email-python/
 #
-# Checks if its Monday, if so send the report from last week to myself
+# Sends condensed version of last week's report:
+# message body::
+# Summary of the last week's activity::
+# Mon:
+#         testing again
+#         asdfasda qw42 teg
+#         just sent a thing
+#         again
+#         a
+#         b
+# Tues:
+#         testing again who cares
+#         b
+# Wens:
+#         fixed the emailing unique tasks part
+# Thurs:
 #
-
+# Friday:
+#
+# todo: add "sent" table to keep track of reports that were already sent to prevent dialogue from popping up on every start on a Monday
+#
 import smtplib
-from email import *
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
+import sqlite3
+from collections import OrderedDict
 from email.mime.multipart import MIMEMultipart
-import time
-import os
+from email.mime.text import MIMEText
 from tkinter import *
 
 root = Tk()
@@ -23,8 +39,9 @@ root.wm_title("Enter email addreses and password.")
 root.wm_attributes("-topmost", 1)
 
 
+# popup dialogue that takes in user's email/password and to-email to send last week's report
+# as a summary of the sql records pertaining to last week
 class requestEmailPass():
-
     def __init__(self, master):
         self.master = master
         self.mainFrame = Frame(self.master)
@@ -32,7 +49,9 @@ class requestEmailPass():
 
         self.directions = Label(self.mainFrame)
         self.directions.configure(
-            text="Enter the gmail address to send report\nfrom and its password along with\nemail address to send report to.")
+            text="Enter the gmail address to send report\nfrom and its password along with"
+                 "\nemail address to send report to.\n"
+                 "If you do not wish to send the report, press cancel.")
         self.directions.grid(row=0, column=0, columnspan=2)
 
         self.fromaddr_label = Label(self.mainFrame)
@@ -60,75 +79,157 @@ class requestEmailPass():
 
         self.btn_done = Button(
             self.mainFrame, text='Done', command=self.saveInfo)
-        self.btn_done.grid(row=4, column=0, columnspan=2)
+        self.btn_done.grid(row=4, column=0, columnspan=2, sticky=W, padx=70, pady=10)
         self.btn_done.bind("<Return>", self.saveInfo)
 
+        self.btn_cancel = Button(
+            self.mainFrame, text='Cancel', command=lambda: self.master.destroy())
+        self.btn_cancel.grid(row=4, column=0, columnspan=2, sticky=E, padx=70, pady=10)
+        self.btn_cancel.bind("<Return>", lambda x: self.master.destroy())
+
+    # function to store email/password info and start report sending
     def saveInfo(self):
         self.fromaddr = self.fromaddr_entry.get()
         self.toaddr = self.toaddr_entry.get()
         self.pw = self.pw_entry.get()
-
-        self.report = SendReport(self.fromaddr, self.toaddr, self.pw)
+        self.report = SendReport(self.fromaddr, self.toaddr, self.pw, sys.argv[1], sys.argv[2])
         self.master.destroy()
 
 
 class SendReport(object):
+    cur = None
+    conn = None
 
-    def __init__(self, fromaddr, toaddr, pw):
-        try:
+    def __init__(self, fromaddr, toaddr, pw, lastweek, thisweek):
+        global conn
+        global cur
 
-            self.fromaddr = fromaddr
-            self.toaddr = toaddr
-            self.pw = pw
+        conn = sqlite3.connect('data.sqlite3')
+        cur = conn.cursor()
 
-            self.msg = MIMEMultipart()
+        self.fromaddr = fromaddr
+        self.toaddr = toaddr
+        self.pw = pw
+        self.lastweek = lastweek
+        self.thisweek = thisweek
 
-            self.msg['From'] = self.fromaddr
-            self.msg['To'] = self.toaddr
+        cur.execute("""SELECT datetime, tasks, forwho
+                        FROM WeeklyReportRaw
+                        WHERE week LIKE (?)
+                        AND (tasks NOT LIKE 'Start')
+                        AND (tasks NOT LIKE 'Stop')""", [self.thisweek])
+        report = (cur.fetchall())
 
-            self.week = int(str(time.strftime("%U"))) - 1
-            self.year = time.strftime("%Y")
+        weekly_summary = {'Mon': [], 'Tues': [], 'Wens': [], 'Thurs': [], 'Fri': [], 'Sat': [], 'Sun': []}
 
-            self.full_datetime = time.strptime(
-                '{} {} 1'.format(self.year, self.week), '%Y %W %w')
+        # each day of the week is a list for each key in the weekly summary dictionary for easy retrieval
+        for row in report:
+            if re.search('Mon', str(row)):
+                weekly_summary['Mon'].append(row)
+            if re.search('Tues', str(row)):
+                weekly_summary['Tues'].append(row)
+            if re.search('Wens', str(row)):
+                weekly_summary['Wens'].append(row)
+            if re.search('Thurs', str(row)):
+                weekly_summary['Thurs'].append(row)
+            if re.search('Fri', str(row)):
+                weekly_summary['Fri'].append(row)
+            if re.search('Sat', str(row)):
+                weekly_summary['Sat'].append(row)
+            if re.search('Sun', str(row)):
+                weekly_summary['Sun'].append(row)
 
-            self.datetime = str(
-                self.year + "_WeekOf-" + str(self.full_datetime.tm_mon) + "-" + str(self.full_datetime.tm_mday))
+        def getKey(item):
+            return item[0]
 
-            self.msg['Subject'] = "TaskList from week " + str(self.full_datetime.tm_mon) + "-" + str(
-                self.full_datetime.tm_mday)
+        # todo: find a more efficient way to store the weekly data than by day individally
+        # each day of the week gets condensed to just the unique activities for that day of the week, listed by
+        # order of entry
+        # monday data
+        mon_set = list(set(weekly_summary['Mon']))
 
-            self.body = "Summarize and report to Juhi"
+        mon_set = sorted(mon_set, key=getKey)
 
-            self.msg.attach(MIMEText(self.body, 'plain'))
+        map(str, mon_set)
 
-            self.filename = self.datetime + ".csv"
-            self.attachment = open("Tasks_csv\\" + self.filename, "rb")
+        mon_set_key = [x[1] for x in mon_set]
+        mon_set_val = [x[2] for x in mon_set]
 
-            self.part = MIMEBase('application', 'octet-stream')
-            self.part.set_payload(self.attachment.read())
-            encoders.encode_base64(self.part)
-            self.part.add_header('Content-Disposition',
-                                 "attachment; filename= %s" % self.filename)
+        mon_set_dict = OrderedDict(zip(mon_set_key, mon_set_val))
 
-            self.msg.attach(self.part)
+        # tuesday data
+        tues_set = list(set(weekly_summary['Tues']))
 
-            self.server = smtplib.SMTP('smtp.gmail.com', 587)
-            self.server.starttls()
-            self.server.login(self.fromaddr, self.pw)
-            self.text = self.msg.as_string()
-            self.server.sendmail(self.fromaddr, self.toaddr, self.text)
+        tues_set = sorted(tues_set, key=getKey)
 
-            self.server.quit()
-            self.attachment.close()
+        map(str, tues_set)
 
-            self.oldpath = "Tasks_csv/" + self.filename
-            self.newpath = "Tasks_sent_csv/" + self.filename
+        tues_set_key = [x[1] for x in tues_set]
+        tues_set_val = [x[2] for x in tues_set]
 
-            os.rename(self.oldpath, self.newpath)
+        tues_set_dict = OrderedDict(zip(tues_set_key, tues_set_val))
 
-        except FileNotFoundError:
-            print("already sent")
+        # wenesday data
+        wens_set = list(set(weekly_summary['Wens']))
+
+        wens_set = sorted(wens_set, key=getKey)
+
+        map(str, wens_set)
+
+        wens_set_key = [x[1] for x in wens_set]
+        wens_set_val = [x[2] for x in wens_set]
+
+        wens_set_dict = OrderedDict(zip(wens_set_key, wens_set_val))
+
+        # thursday data
+        thurs_set = list(set(weekly_summary['Thurs']))
+
+        thurs_set = sorted(thurs_set, key=getKey)
+
+        map(str, thurs_set)
+
+        thurs_set_key = [x[1] for x in thurs_set]
+        thurs_set_val = [x[2] for x in thurs_set]
+
+        thurs_set_dict = OrderedDict(zip(thurs_set_key, thurs_set_val))
+
+        # thursday data
+        fri_set = list(set(weekly_summary['Fri']))
+
+        fri_set = sorted(fri_set, key=getKey)
+
+        map(str, fri_set)
+
+        fri_set_key = [x[1] for x in fri_set]
+        fri_set_val = [x[2] for x in fri_set]
+
+        fri_set_dict = OrderedDict(zip(fri_set_key, fri_set_val))
+
+        # create the condensed report as the body of the email
+        messagebody = "Mon:\n\t" + '\n\t'.join(mon_set_dict)
+        messagebody += "\nTues:\n\t" + '\n\t'.join(tues_set_dict)
+        messagebody += "\nWens:\n\t" + '\n\t'.join(wens_set_dict)
+        messagebody += "\nThurs:\n\t" + '\n\t'.join(thurs_set_dict)
+        messagebody += "\nFriday:\n\t" + '\n\t'.join(fri_set_dict)
+
+        self.msg = MIMEMultipart()
+
+        self.msg['From'] = self.fromaddr
+        self.msg['To'] = self.toaddr
+
+        self.msg['Subject'] = "TaskList from week " + self.lastweek
+
+        self.body = "Summary of the last week's activity:\n\n" + messagebody
+
+        self.msg.attach(MIMEText(self.body, 'plain'))
+
+        self.server = smtplib.SMTP('smtp.gmail.com', 587)
+        self.server.starttls()
+        self.server.login(self.fromaddr, self.pw)
+        self.text = self.msg.as_string()
+        self.server.sendmail(self.fromaddr, self.toaddr, self.text)
+
+        self.server.quit()
 
 
 def start():
