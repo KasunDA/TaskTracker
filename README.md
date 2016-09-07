@@ -37,6 +37,12 @@ It then moves the last week's report to a folder for already sent reports. If it
 A few things I'd like to implement to flesh this out:
 * Validate email addresses
 * Expand to more than just gmail addresses
-* ~~Some way to filter or summarize the entries from the emailed report (word or phrase frequency count?)~~ Ended up just managing data in a local SQLite database to filter by unique activities for the summary.
+* ~~Some way to filter or summarize the entries from the emailed report (word or phrase frequency count?)~~ 
+  * Ended up just managing data in a local SQLite database to filter by unique activities for the summary.
 * Have mutliple users and profiles
 * Host entries on a remote server instead of locally maybe
+* Create ability to view past reports by the week
+* Allow editing of reports by the week (within the day of the week?)
+* Create table keeping track of whether a report was sent already to prevent request of sending every time on start up
+* Choosing a different day of week to ask for report sending
+* Sending report on demand (menu bar item within TaskTracker.py to pull up send_report.py)
