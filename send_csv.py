@@ -223,8 +223,7 @@ class SendReport(object):
 
         self.msg.attach(MIMEText(self.body, 'plain'))
 
-        self.server = smtplib.SMTP('smtp.gmail.com', 587)
-        self.server.starttls()
+        self.server = smtplib.SMTP_SSL('smtp.gmail.com')
         self.server.login(self.fromaddr, self.pw)
         self.text = self.msg.as_string()
         self.server.sendmail(self.fromaddr, self.toaddr, self.text)
