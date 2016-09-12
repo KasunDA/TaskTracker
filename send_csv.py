@@ -117,21 +117,20 @@ class SendReport(object):
                         FROM WeeklyReportRaw
                         WHERE week LIKE (?)
                         AND (tasks NOT LIKE 'Start')
-                        AND (tasks NOT LIKE 'Stop')""", [self.thisweek])
+                        AND (tasks NOT LIKE 'Stop')""", [self.lastweek])
         report = (cur.fetchall())
-
-        weekly_summary = {'Mon': [], 'Tues': [], 'Wens': [], 'Thurs': [], 'Fri': [], 'Sat': [], 'Sun': []}
+        weekly_summary = {'Mon': [], 'Tue': [], 'Wed': [], 'Thu': [], 'Fri': [], 'Sat': [], 'Sun': []}
 
         # each day of the week is a list for each key in the weekly summary dictionary for easy retrieval
         for row in report:
             if re.search('Mon', str(row)):
                 weekly_summary['Mon'].append(row)
-            if re.search('Tues', str(row)):
-                weekly_summary['Tues'].append(row)
-            if re.search('Wens', str(row)):
-                weekly_summary['Wens'].append(row)
-            if re.search('Thurs', str(row)):
-                weekly_summary['Thurs'].append(row)
+            if re.search('Tue', str(row)):
+                weekly_summary['Tue'].append(row)
+            if re.search('Wed', str(row)):
+                weekly_summary['Wed'].append(row)
+            if re.search('Thu', str(row)):
+                weekly_summary['Thu'].append(row)
             if re.search('Fri', str(row)):
                 weekly_summary['Fri'].append(row)
             if re.search('Sat', str(row)):
@@ -147,7 +146,6 @@ class SendReport(object):
         # order of entry
         # monday data
         mon_set = list(set(weekly_summary['Mon']))
-
         mon_set = sorted(mon_set, key=getKey)
 
         map(str, mon_set)
@@ -158,7 +156,7 @@ class SendReport(object):
         mon_set_dict = OrderedDict(zip(mon_set_key, mon_set_val))
 
         # tuesday data
-        tues_set = list(set(weekly_summary['Tues']))
+        tues_set = list(set(weekly_summary['Tue']))
 
         tues_set = sorted(tues_set, key=getKey)
 
@@ -170,7 +168,7 @@ class SendReport(object):
         tues_set_dict = OrderedDict(zip(tues_set_key, tues_set_val))
 
         # wenesday data
-        wens_set = list(set(weekly_summary['Wens']))
+        wens_set = list(set(weekly_summary['Wed']))
 
         wens_set = sorted(wens_set, key=getKey)
 
@@ -182,7 +180,7 @@ class SendReport(object):
         wens_set_dict = OrderedDict(zip(wens_set_key, wens_set_val))
 
         # thursday data
-        thurs_set = list(set(weekly_summary['Thurs']))
+        thurs_set = list(set(weekly_summary['Thu']))
 
         thurs_set = sorted(thurs_set, key=getKey)
 
